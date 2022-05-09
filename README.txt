@@ -1,3 +1,5 @@
+Elastic Cloud with Kibana deployment on Kubernetes cluster considering data persistence using Local Path Provisioner
+
 
 # Please note that elasticsearch along with are deployed in "elasticsearch" namespace
 # Elastic-search data are persisted in "/mnt/elastic-search" dir in all nodes > default
