@@ -1,0 +1,82 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+ name: elasticsearch
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+  namespace: elasticsearch
+spec:
+  version: 8.0.1
+  nodeSets:
+  - name: master
+    count: 3
+    config:
+      node.roles: ["master"]
+      node.store.allow_mmap: false
+      # node.remote_cluster_client: false
+      # It is intended to run on hosts with high CPU resources and fast IO (SSD)
+      node.attr.data: hot
+    volumeClaimTemplates:
+      - metadata:
+          # The name of the volume claim must always be elasticsearch-data
+          name: elasticsearch-data
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 50Gi
+          # Choose target StorageClass 
+          storageClassName: local-path
+    podTemplate:
+      spec:
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: -Xms4g -Xmx4g  
+          resources:
+            requests: 
+              memory: 4Gi
+              cpu: 2
+            limits:
+              memory: 8Gi
+              cpu: 4
+  - name: data
+    count: 3
+    config:
+      node.roles: ["data", "ingest", "ml", "transform"]
+      # It is intended to run on hosts with larger but maybe slower storage
+      node.attr.data: warm
+      node.store.allow_mmap: false
+    volumeClaimTemplates:
+      - metadata:
+          # The name of the volume claim must always be elasticsearch-data
+          name: elasticsearch-data
+        spec:
+          accessModes:
+          - ReadWriteOnce
+          resources:
+            requests:
+              storage: 100Gi
+          # Choose target StorageClass
+          storageClassName: local-path
+    podTemplate:
+      spec:
+        initContainers:
+        - name: sysctl
+          securityContext:
+            privileged: true
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        containers:
+        - name: elasticsearch
+          env:
+          - name: ES_JAVA_OPTS
+            value: -Xms4g -Xmx4g
+          resources:
+            limits:
+              memory: 16Gi
+              cpu: 8
